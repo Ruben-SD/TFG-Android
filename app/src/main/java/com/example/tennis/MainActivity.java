@@ -6,6 +6,7 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.SensorListener;
 import android.media.AudioFormat;
@@ -18,11 +19,13 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.PowerManager;
 import android.os.StrictMode;
 import android.os.SystemClock;
 import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -48,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private String ipAddr = "192.168.1.39"; //pc
+    private String ipAddr = "192.168.1.40"; //pc
     EditText ipAddrInput;
     Button submitIPButton;
     TextView fpsText;
@@ -74,6 +77,8 @@ public class MainActivity extends AppCompatActivity {
         submitIPButton = (Button) findViewById(R.id.buttonSubmitIP);
         submitIPButton.setOnClickListener(v -> ipAddr = ipAddrInput.getText().toString());
         fpsText = (TextView) findViewById(R.id.fpsText);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
         startStreaming();
