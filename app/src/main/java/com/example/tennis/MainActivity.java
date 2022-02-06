@@ -2,7 +2,11 @@ package com.example.tennis;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
+import android.Manifest;
+import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.hardware.SensorListener;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -15,12 +19,14 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.StrictMode;
+import android.os.SystemClock;
 import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -42,15 +48,17 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private String ipAddr = "192.168.1.35"; //pc
+    private String ipAddr = "192.168.1.39"; //pc
     EditText ipAddrInput;
     Button submitIPButton;
+    TextView fpsText;
+    long start;
+    int fps;
 
     AudioRecord recorder;
     private int sampleRate = 44100;
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
-
 
 
     public MainActivity() throws SocketException {
@@ -65,67 +73,71 @@ public class MainActivity extends AppCompatActivity {
         ipAddrInput = (EditText) findViewById(R.id.editTextIPAddress);
         submitIPButton = (Button) findViewById(R.id.buttonSubmitIP);
         submitIPButton.setOnClickListener(v -> ipAddr = ipAddrInput.getText().toString());
+        fpsText = (TextView) findViewById(R.id.fpsText);
 
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
         startStreaming();
-    }
 
-    public void startStreaming() {
-
-
-        Thread streamThread = new Thread(new Runnable() {
-
+        Thread t = new Thread() {
             @Override
             public void run() {
                 try {
+                    while (!isInterrupted()) {
+                        Thread.sleep(100);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                // update TextView here!
 
-
-                    int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                    DatagramSocket socket = new DatagramSocket();
-                    Log.d("VS", "Socket Created");
-                    Log.d("VS", String.valueOf(minBufSize));
-                    byte[] buffer = new byte[minBufSize + 4];
-
-                    Log.d("VS","Buffer created of size " + minBufSize);
-                    DatagramPacket packet;
-
-                    final InetAddress destination = InetAddress.getByName(ipAddr);
-                    Log.d("VS", "Address retrieved");
-
-
-                    recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,sampleRate,channelConfig,audioFormat,minBufSize);
-                    Log.d("VS", "Recorder initialized");
-
-                    recorder.startRecording();
-
-
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
-                    buffer[0] = sizeBytes[0];
-                    buffer[1] = sizeBytes[1];
-                    buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
-                    while(true) {
-                        //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
-                        //putting buffer in the packet
-
-                        packet = new DatagramPacket (buffer,buffer.length,destination,5555);
-
-                        socket.send(packet);
-
-
+//                                fpsText.setText("FPS: " + (start - SystemClock.elapsedRealtime()));
+                            }
+                        });
                     }
-
-
-
-                } catch(UnknownHostException e) {
-                    Log.e("VS", "UnknownHostException");
-                } catch (IOException e) {
-                    Log.e("VS", "IOException");
+                } catch (InterruptedException e) {
                 }
-
-
             }
+        };
 
+        t.start();
+    }
+
+    public void startStreaming() {
+        Thread streamThread = new Thread(() -> {
+            try {
+                int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+                DatagramSocket socket = new DatagramSocket();
+                Log.d("VS", "Socket Created");
+                Log.d("VS", String.valueOf(minBufSize));
+                byte[] buffer = new byte[minBufSize + 4];
+
+                Log.d("VS", "Buffer created of size " + minBufSize);
+                DatagramPacket packet;
+
+                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, minBufSize);
+                Log.d("VS", "Recorder initialized");
+
+                recorder.startRecording();
+
+                byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+                buffer[0] = sizeBytes[0];
+                buffer[1] = sizeBytes[1];
+                buffer[2] = sizeBytes[2];
+                buffer[3] = sizeBytes[3];
+
+
+                while(true) {
+                    //reading data from MIC into buffer
+                    int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
+                    //putting buffer in the packet
+                    InetAddress destination = InetAddress.getByName(ipAddr);
+                    packet = new DatagramPacket (buffer,buffer.length,destination,5555);
+                    socket.send(packet);
+                }
+            } catch(UnknownHostException e) {
+                Log.e("VS", "UnknownHostException");
+            } catch (IOException e) {
+                Log.e("VS", "IOException");
+            }
         });
         streamThread.start();
     }
