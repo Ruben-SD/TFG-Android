@@ -12,33 +12,66 @@
         android:layout_centerHorizontal="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0">
 
+
+        <Button
+            android:id="@+id/showChessPatternButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/connectedToText"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="154dp"
+            android:layout_marginLeft="150dp"
+            android:layout_marginTop="46dp"
+            android:layout_marginEnd="145dp"
+            android:text="Show chess pattern"
+            app:backgroundTint="#000000" />
+
+        <TextView
+            android:id="@+id/connectedToText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/submitIpButton"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="131dp"
+            android:layout_marginLeft="100dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginEnd="118dp"
+            android:text="Sending data to: " />
 
         <EditText
             android:id="@+id/editTextIPAddress"
             android:layout_width="wrap_content"
             android:layout_height="-50dp"
             android:layout_centerInParent="true"
+            android:layout_centerVertical="true"
             android:ems="10"
+            android:hint="192.168.1.2"
             android:inputType="textPersonName" />
 
         <TextView
             android:id="@+id/textView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="300dp"
+            android:layout_above="@+id/editTextIPAddress"
+            android:layout_alignParentTop="true"
             android:layout_marginLeft="100dp"
+            android:layout_marginTop="300dp"
+            android:layout_marginBottom="23dp"
             android:text="Enter your PC IP Address:" />
 
         <Button
-            android:id="@+id/buttonSubmitIP"
-            android:layout_marginTop="400dp"
-            android:layout_marginLeft="150dp"
+            android:id="@+id/submitIpButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="150dp"
+            android:layout_marginTop="400dp"
             android:text="Submit IP"
             app:backgroundTint="#000000" />
 

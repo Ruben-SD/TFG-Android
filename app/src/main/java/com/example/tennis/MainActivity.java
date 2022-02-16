@@ -5,42 +5,26 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
-import android.app.Activity;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.hardware.SensorListener;
+import android.content.Intent;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.os.PowerManager;
-import android.os.StrictMode;
-import android.os.SystemClock;
 import android.util.Log;
-import android.util.Patterns;
-import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.Locale;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -51,10 +35,10 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private String ipAddr = "192.168.1.40"; //pc
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.40");
     EditText ipAddrInput;
-    Button submitIPButton;
-    TextView fpsText;
+    Button submitIPButton, showChessPatternButton;
+    TextView fpsText, connectedToText;
     long start;
     int fps;
 
@@ -64,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
 
 
-    public MainActivity() throws SocketException {
+    public MainActivity() throws SocketException, UnknownHostException {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -74,37 +58,27 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         ipAddrInput = (EditText) findViewById(R.id.editTextIPAddress);
-        submitIPButton = (Button) findViewById(R.id.buttonSubmitIP);
-        submitIPButton.setOnClickListener(v -> ipAddr = ipAddrInput.getText().toString());
+        submitIPButton = (Button) findViewById(R.id.submitIpButton);
+        connectedToText = (TextView) findViewById(R.id.connectedToText);
         fpsText = (TextView) findViewById(R.id.fpsText);
+        showChessPatternButton = (Button) findViewById(R.id.showChessPatternButton);
+        connectedToText.setText("Sending data to " + pcIp.toString());
+        submitIPButton.setOnClickListener(v -> {
+            try {
+                pcIp = InetAddress.getByName(ipAddrInput.getText().toString());
+                connectedToText.setText("Sending data to " + pcIp.toString());
+            } catch (UnknownHostException e) {}
+        });
+        Intent intent = new Intent(this, ChessPattern.class);
+        showChessPatternButton.setOnClickListener(v -> this.startActivity(intent));
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
+
         startStreaming();
-
-        Thread t = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    while (!isInterrupted()) {
-                        Thread.sleep(100);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                // update TextView here!
-
-//                                fpsText.setText("FPS: " + (start - SystemClock.elapsedRealtime()));
-                            }
-                        });
-                    }
-                } catch (InterruptedException e) {
-                }
-            }
-        };
-
-        t.start();
     }
+
+
 
     public void startStreaming() {
         Thread streamThread = new Thread(() -> {
@@ -134,8 +108,7 @@ public class MainActivity extends AppCompatActivity {
                     //reading data from MIC into buffer
                     int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
                     //putting buffer in the packet
-                    InetAddress destination = InetAddress.getByName(ipAddr);
-                    packet = new DatagramPacket (buffer,buffer.length,destination,5555);
+                    packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
                     socket.send(packet);
                 }
             } catch(UnknownHostException e) {
