@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -12,6 +13,7 @@ import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -35,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.40");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.36");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
@@ -70,7 +72,11 @@ public class MainActivity extends AppCompatActivity {
             } catch (UnknownHostException e) {}
         });
         Intent intent = new Intent(this, ChessPattern.class);
-        showChessPatternButton.setOnClickListener(v -> this.startActivity(intent));
+        showChessPatternButton.setOnClickListener(v -> {
+            WindowManager.LayoutParams layout = getWindow().getAttributes();
+            layout.screenBrightness = 0F;
+            getWindow().setAttributes(layout);
+        });
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
