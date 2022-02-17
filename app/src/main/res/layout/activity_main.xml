@@ -76,9 +76,10 @@
             app:backgroundTint="#000000" />
 
         <TextView
-            android:id="@+id/fpsText"
+            android:id="@+id/textViewFPS"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
     </RelativeLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

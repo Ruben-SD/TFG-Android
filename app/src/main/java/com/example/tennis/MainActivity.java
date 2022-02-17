@@ -13,6 +13,7 @@ import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 
+import android.os.Handler;
 import android.os.PowerManager;
 import android.util.Log;
 import android.view.WindowManager;
@@ -62,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         ipAddrInput = (EditText) findViewById(R.id.editTextIPAddress);
         submitIPButton = (Button) findViewById(R.id.submitIpButton);
         connectedToText = (TextView) findViewById(R.id.connectedToText);
-        fpsText = (TextView) findViewById(R.id.fpsText);
+        fpsText = (TextView) findViewById(R.id.textViewFPS);
         showChessPatternButton = (Button) findViewById(R.id.showChessPatternButton);
         connectedToText.setText("Sending data to " + pcIp.toString());
         submitIPButton.setOnClickListener(v -> {
@@ -74,7 +75,9 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, ChessPattern.class);
         showChessPatternButton.setOnClickListener(v -> {
             WindowManager.LayoutParams layout = getWindow().getAttributes();
-            layout.screenBrightness = 0F;
+            if (layout.screenBrightness == 0F)
+                layout.screenBrightness = -1;
+            else layout.screenBrightness = 0F;
             getWindow().setAttributes(layout);
         });
 
@@ -87,42 +90,53 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void startStreaming() {
-        Thread streamThread = new Thread(() -> {
-            try {
-                int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                DatagramSocket socket = new DatagramSocket();
-                Log.d("VS", "Socket Created");
-                Log.d("VS", String.valueOf(minBufSize));
-                byte[] buffer = new byte[minBufSize + 4];
+        Handler handler = new Handler();
+        Runnable runnable = new Runnable() {
+            private long startTime = System.currentTimeMillis();
+            public void run() {
+                try {
+                    int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+                    DatagramSocket socket = new DatagramSocket();
+                    Log.d("VS", "Socket Created");
+                    Log.d("VS", String.valueOf(minBufSize));
+                    byte[] buffer = new byte[minBufSize + 4];
 
-                Log.d("VS", "Buffer created of size " + minBufSize);
-                DatagramPacket packet;
+                    Log.d("VS", "Buffer created of size " + minBufSize);
+                    DatagramPacket packet;
 
-                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, minBufSize);
-                Log.d("VS", "Recorder initialized");
+                    recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, minBufSize);
 
-                recorder.startRecording();
+                    Log.d("VS", "Recorder initialized");
 
-                byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
-                buffer[0] = sizeBytes[0];
-                buffer[1] = sizeBytes[1];
-                buffer[2] = sizeBytes[2];
-                buffer[3] = sizeBytes[3];
+                    recorder.startRecording();
+
+                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+                    buffer[0] = sizeBytes[0];
+                    buffer[1] = sizeBytes[1];
+                    buffer[2] = sizeBytes[2];
+                    buffer[3] = sizeBytes[3];
 
 
-                while(true) {
-                    //reading data from MIC into buffer
-                    int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
-                    //putting buffer in the packet
-                    packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
-                    socket.send(packet);
+                    while(true) {
+                        long start = System.currentTimeMillis();
+                        //reading data from MIC into buffer
+                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
+                        //putting buffer in the packet
+                        packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
+                        socket.send(packet);
+                        handler.post(new Runnable() {
+                            public void run() {
+                                long now = System.currentTimeMillis() - start;
+                                fpsText.setText("FPS: " + String.valueOf(1000/now));
+                        }});
+                    }
+                } catch(UnknownHostException e) {
+                    Log.e("VS", "UnknownHostException");
+                } catch (IOException e) {
+                    Log.e("VS", "IOException");
                 }
-            } catch(UnknownHostException e) {
-                Log.e("VS", "UnknownHostException");
-            } catch (IOException e) {
-                Log.e("VS", "IOException");
             }
-        });
-        streamThread.start();
+        };
+        new Thread(runnable).start();
     }
 }
