@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
     int fps;
 
     AudioRecord recorder;
-    private int sampleRate = 44100;
+    private int sampleRate = 96000;
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
 
@@ -116,18 +116,24 @@ public class MainActivity extends AppCompatActivity {
                     buffer[2] = sizeBytes[2];
                     buffer[3] = sizeBytes[3];
 
+                    byte[] buf = new byte[100];
+                    byte[] sizeBytes2 = ByteBuffer.allocate(4).putInt(100).array();
+                    buf[0] = sizeBytes2[0];
+                    buf[1] = sizeBytes2[1];
+                    buf[2] = sizeBytes2[2];
+                    buf[3] = sizeBytes2[3];
 
+                    byte i = 0;
                     while(true) {
                         long start = System.currentTimeMillis();
                         //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
+                        int bytesRead = recorder.read(buf, 1, 100 - 4);
+                        buf[0] = i++;
                         //putting buffer in the packet
-                        packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
+                        packet = new DatagramPacket(buf, buf.length, pcIp,5555);
                         socket.send(packet);
                         handler.post(new Runnable() {
                             public void run() {
-                                long now = System.currentTimeMillis() - start;
-                                fpsText.setText("FPS: " + String.valueOf(1000/now));
                         }});
                     }
                 } catch(UnknownHostException e) {
