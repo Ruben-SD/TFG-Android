@@ -7,6 +7,7 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -28,6 +29,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -93,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
         Handler handler = new Handler();
         Runnable runnable = new Runnable() {
             private long startTime = System.currentTimeMillis();
+            @RequiresApi(api = Build.VERSION_CODES.O)
             public void run() {
                 try {
                     int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
@@ -110,28 +113,23 @@ public class MainActivity extends AppCompatActivity {
 
                     recorder.startRecording();
 
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
-                    buffer[0] = sizeBytes[0];
-                    buffer[1] = sizeBytes[1];
-                    buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
-
-                    byte[] buf = new byte[100];
-                    byte[] sizeBytes2 = ByteBuffer.allocate(4).putInt(100).array();
-                    buf[0] = sizeBytes2[0];
-                    buf[1] = sizeBytes2[1];
-                    buf[2] = sizeBytes2[2];
-                    buf[3] = sizeBytes2[3];
+                    byte[] buf = new byte[50];
 
                     byte i = 0;
                     while(true) {
-                        long start = System.currentTimeMillis();
-                        //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buf, 1, 100 - 4);
+                        Instant instant = Instant.now();
+                        long currentTimeMicros = instant.getEpochSecond() * 1000_000 + instant.getNano() / 1000;
+
+                        byte[] timeBytes = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(currentTimeMicros).array();
                         buf[0] = i++;
-                        //putting buffer in the packet
+                        for (int j = 0; j < timeBytes.length; ++j)
+                            buf[j + 1] = timeBytes[j];
+
+                        int bytesRead = recorder.read(buf, 1 + timeBytes.length, buf.length - (1 + timeBytes.length));
+
                         packet = new DatagramPacket(buf, buf.length, pcIp,5555);
                         socket.send(packet);
+
                         handler.post(new Runnable() {
                             public void run() {
                         }});
