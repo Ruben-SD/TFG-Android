@@ -125,8 +125,11 @@ public class MainActivity extends AppCompatActivity {
                         for (int j = 0; j < timeBytes.length; ++j)
                             buf[j + 1] = timeBytes[j];
 
+                        long start = System.nanoTime();
                         int bytesRead = recorder.read(buf, 1 + timeBytes.length, buf.length - (1 + timeBytes.length));
 
+                        long elapsed = System.nanoTime() - start;
+                        Log.d("oaisjd", String.valueOf(elapsed));
                         packet = new DatagramPacket(buf, buf.length, pcIp,5555);
                         socket.send(packet);
 
