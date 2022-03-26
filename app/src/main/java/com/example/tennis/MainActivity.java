@@ -7,7 +7,9 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioFormat;
+import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -46,9 +48,9 @@ public class MainActivity extends AppCompatActivity {
     int fps;
 
     AudioRecord recorder;
-    private int sampleRate = 44100;
+    private int sampleRate = 48000;
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-    private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
+    private int audioFormat = AudioFormat.ENCODING_PCM_FLOAT;
 
 
     public MainActivity() throws SocketException, UnknownHostException {
@@ -59,7 +61,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        AudioManager audioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+        String rate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
+        String size = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
+        Log.d("Buffer Size aple rate", "Size :" + size + " & Rate: " + rate);
         ipAddrInput = (EditText) findViewById(R.id.editTextIPAddress);
         submitIPButton = (Button) findViewById(R.id.submitIpButton);
         connectedToText = (TextView) findViewById(R.id.connectedToText);
@@ -70,7 +75,8 @@ public class MainActivity extends AppCompatActivity {
             try {
                 pcIp = InetAddress.getByName(ipAddrInput.getText().toString());
                 connectedToText.setText("Sending data to " + pcIp.toString());
-            } catch (UnknownHostException e) {}
+            } catch (UnknownHostException e) {
+            }
         });
         Intent intent = new Intent(this, ChessPattern.class);
         showChessPatternButton.setOnClickListener(v -> {
@@ -88,11 +94,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     public void startStreaming() {
         Handler handler = new Handler();
         Runnable runnable = new Runnable() {
             private long startTime = System.currentTimeMillis();
+
+            @RequiresApi(api = Build.VERSION_CODES.M)
             public void run() {
                 try {
                     int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
@@ -104,8 +111,22 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("VS", "Buffer created of size " + minBufSize);
                     DatagramPacket packet;
 
+                    if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                        // TODO: Consider calling
+                        //    ActivityCompat#requestPermissions
+                        // here to request the missing permissions, and then overriding
+                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                        //                                          int[] grantResults)
+                        // to handle the case where the user grants the permission. See the documentation
+                        // for ActivityCompat#requestPermissions for more details.
+                        return;
+                    }
                     recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, minBufSize);
-
+                    if (recorder.getState() == AudioRecord.STATE_UNINITIALIZED) {
+                        // Oops looks like it was not initalized correctly
+                        Log.d("TAG", "ERROR");
+                        return;
+                    }
                     Log.d("VS", "Recorder initialized");
 
                     recorder.startRecording();
@@ -117,17 +138,24 @@ public class MainActivity extends AppCompatActivity {
                     buffer[3] = sizeBytes[3];
 
 
+                    float[] buffer2 = new float[minBufSize];
                     while(true) {
+
                         long start = System.currentTimeMillis();
                         //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
+                        int bytesRead = recorder.read(buffer2, 0, minBufSize, AudioRecord.READ_BLOCKING);
+
                         //putting buffer in the packet
-                        packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
+                        ByteBuffer bufferf = ByteBuffer.allocate(buffer2.length * (Float.SIZE/Byte.SIZE));
+                        bufferf.asFloatBuffer().put(buffer2);
+                        packet = new DatagramPacket(bufferf.array(), bufferf.array().length, pcIp,5555);
                         socket.send(packet);
                         handler.post(new Runnable() {
                             public void run() {
                                 long now = System.currentTimeMillis() - start;
-                                fpsText.setText("FPS: " + String.valueOf(1000/now));
+                                Log.d("TIME", String.valueOf(now));
+                                if (now != 0)
+                                    fpsText.setText("FPS: " + String.valueOf(1000/now));
                         }});
                     }
                 } catch(UnknownHostException e) {
