@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("VS", "Buffer created of size " + minBufSize);
                     DatagramPacket packet;
 
-                    recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, minBufSize);
+                    recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
 
                     Log.d("VS", "Recorder initialized");
 
