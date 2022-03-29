@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.36");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.40");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
@@ -46,9 +46,9 @@ public class MainActivity extends AppCompatActivity {
     int fps;
 
     AudioRecord recorder;
-    private int sampleRate = 44100;
-    private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-    private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
+    private int sampleRate = 48000;
+    private int channelConfig = AudioFormat.CHANNEL_IN_STEREO;
+    private int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
 
 
     public MainActivity() throws SocketException, UnknownHostException {
@@ -110,20 +110,36 @@ public class MainActivity extends AppCompatActivity {
 
                     recorder.startRecording();
 
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
-                    buffer[0] = sizeBytes[0];
-                    buffer[1] = sizeBytes[1];
-                    buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
 
 
                     while(true) {
+                        short samples[] = new short[1921];
+                        samples[0] = 342;
+
+                        short samplesL[] = new short[1920/2];
+                        short samplesR[] = new short[1920/2];
+
                         long start = System.currentTimeMillis();
                         //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
+                        int bytesRead = recorder.read(samples, 1, samples.length - 1);
+
+                        /*for(int i = 1; i < bytesRead/2; i = i + 2)
+                        {
+                            samplesL[i - 1] = samples[i];
+                            samplesR[i - 1] = samples[i+1];
+                            short a = samplesL[i - 1];
+                            short b = samplesR[i - 1];
+                            Log.d("A", String.valueOf(a) + " , " + String.valueOf(b));
+                        }
+*/
+                        ByteBuffer b = ByteBuffer.allocate(1921 * 2);
+                        for (short s : samples)
+                            b.putShort(s);
+
                         //putting buffer in the packet
-                        packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
+                        packet = new DatagramPacket(b.array(), b.array().length, pcIp,5555);
                         socket.send(packet);
+
                         handler.post(new Runnable() {
                             public void run() {
                                 long now = System.currentTimeMillis() - start;
