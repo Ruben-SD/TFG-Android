@@ -131,32 +131,34 @@ public class MainActivity extends AppCompatActivity {
 
                     recorder.startRecording();
 
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
-                    buffer[0] = sizeBytes[0];
-                    buffer[1] = sizeBytes[1];
-                    buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
+                    //byte[] sizeBytes = ByteBuffer.allocate(4).putInt(1920 + 4).array();
 
 
-                    float[] buffer2 = new float[minBufSize];
+                    //byte[] sizeBytes = ByteBuffer.allocate(4).putLong(start).array();
+
+                    float[] floatsBuffer = new float[1920 + 1];
+
+                    int i = -1;
                     while(true) {
-
                         long start = System.currentTimeMillis();
+                        floatsBuffer[0] = ++i;
+
                         //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer2, 0, minBufSize, AudioRecord.READ_BLOCKING);
+                        int bytesRead = recorder.read(floatsBuffer, 1, 1920, AudioRecord.READ_BLOCKING);
 
                         //putting buffer in the packet
-                        ByteBuffer bufferf = ByteBuffer.allocate(buffer2.length * (Float.SIZE/Byte.SIZE));
-                        bufferf.asFloatBuffer().put(buffer2);
-                        packet = new DatagramPacket(bufferf.array(), bufferf.array().length, pcIp,5555);
+                        ByteBuffer bytesBuffer = ByteBuffer.allocate(floatsBuffer.length * (Float.SIZE/Byte.SIZE));
+                        bytesBuffer.asFloatBuffer().put(floatsBuffer);
+
+                        packet = new DatagramPacket(bytesBuffer.array(), bytesBuffer.array().length, pcIp,5555);
                         socket.send(packet);
-                        handler.post(new Runnable() {
-                            public void run() {
-                                long now = System.currentTimeMillis() - start;
-                                Log.d("TIME", String.valueOf(now));
-                                if (now != 0)
-                                    fpsText.setText("FPS: " + String.valueOf(1000/now));
-                        }});
+
+                        handler.post(() -> {
+                            long now = System.currentTimeMillis() - start;
+
+                            if (now != 0)
+                                fpsText.setText("FPS: " + 1000/now);
+                        });
                     }
                 } catch(UnknownHostException e) {
                     Log.e("VS", "UnknownHostException");
