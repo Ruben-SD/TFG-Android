@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.media.audiofx.NoiseSuppressor;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -36,9 +37,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView mTextViewPitch;
     private TextView mTextViewRoll;
 
-    private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.36");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.38");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
@@ -105,6 +105,9 @@ public class MainActivity extends AppCompatActivity {
                     DatagramPacket packet;
 
                     recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
+
+                    NoiseSuppressor supressor = NoiseSuppressor.create(recorder.getAudioSessionId());
+                    supressor.setEnabled(true);
 
                     Log.d("VS", "Recorder initialized");
 
