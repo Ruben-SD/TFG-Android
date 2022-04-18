@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.36");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.38");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
             private long startTime = System.currentTimeMillis();
             public void run() {
                 try {
-                    int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+                    int minBufSize =3584;
                     DatagramSocket socket = new DatagramSocket();
                     Log.d("VS", "Socket Created");
                     Log.d("VS", String.valueOf(minBufSize));
@@ -124,11 +124,10 @@ public class MainActivity extends AppCompatActivity {
                         //putting buffer in the packet
                         packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
                         socket.send(packet);
-                        handler.post(new Runnable() {
-                            public void run() {
-                                long now = System.currentTimeMillis() - start;
-                                fpsText.setText("FPS: " + String.valueOf(1000/now));
-                        }});
+                        long now = System.currentTimeMillis();
+                        long delta = now - start;
+                        long fps = 1000/delta;
+
                     }
                 } catch(UnknownHostException e) {
                     Log.e("VS", "UnknownHostException");
