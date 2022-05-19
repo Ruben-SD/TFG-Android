@@ -8,7 +8,9 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioFormat;
+import android.media.AudioManager;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
@@ -50,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
 
+    AudioTrack audioTrack;
+
 
     public MainActivity() throws SocketException, UnknownHostException {
     }
@@ -84,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
 
+        playSound();
         startStreaming();
     }
 
@@ -138,5 +143,55 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         new Thread(runnable).start();
+    }
+
+    private void playSound() {
+        byte soundSamples[] = genTone(18000);
+        byte soundSamples2[] = genTone(19000);
+        for (int i = 0; i < soundSamples.length; i += 2) {
+            byte b0 = soundSamples[i];
+            byte b1 = soundSamples[i + 1];
+
+            byte b2 = soundSamples2[i];
+            byte b3 = soundSamples2[i + 1];
+
+            short a = (short) (b0 | (b1 << 8));
+            short b = (short) (b2 | (b3 << 8));
+
+            short res = (short) (a + b);
+            soundSamples[i] = (byte) (res & 0xff);
+            soundSamples[i + 1] = (byte) ((res & 0xff00) >> 8);
+        }
+        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
+                sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT, soundSamples.length,
+                AudioTrack.MODE_STATIC);
+        audioTrack.write(soundSamples, 0, soundSamples.length);
+        audioTrack.setLoopPoints(0, soundSamples.length/4, -1);
+        audioTrack.play();
+        Log.d("TAG", "Playing sound");
+    }
+
+    byte[] genTone(double freqOfTone){
+        int sampleRate = 44100;
+        int numSamples = sampleRate;
+        double sample[] = new double[numSamples];
+        // fill out the array
+        for (int i = 0; i < numSamples; ++i) {
+            sample[i] = Math.sin(2 * Math.PI * i / (sampleRate/freqOfTone));
+        }
+
+        byte soundSamples[] = new byte[2 * numSamples];
+        // convert to 16 bit pcm sound array
+        // assumes the sample buffer is normalised.
+        int idx = 0;
+        for (final double dVal : sample) {
+            // scale to maximum amplitude
+            final short val = (short) ((dVal * 100));
+            // in 16 bit wav PCM, first byte is the low order byte
+            soundSamples[idx++] = (byte) (val & 0x00ff);
+            soundSamples[idx++] = (byte) ((val & 0xff00) >>> 8);
+        }
+        return soundSamples;
     }
 }
