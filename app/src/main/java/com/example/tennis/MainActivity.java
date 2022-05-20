@@ -145,40 +145,50 @@ public class MainActivity extends AppCompatActivity {
         new Thread(runnable).start();
     }
 
-    private void playSound() {
-        byte soundSamples[] = genTone(18000);
-        byte soundSamples2[] = genTone(19000);
-        for (int i = 0; i < soundSamples.length; i += 2) {
-            byte b0 = soundSamples[i];
-            byte b1 = soundSamples[i + 1];
+    private byte[] addByteArrays(byte[] v1, byte v2[]) {
+        for (int i = 0; i < v1.length; i += 2) {
+            byte b0 = v1[i];
+            byte b1 = v1[i + 1];
 
-            byte b2 = soundSamples2[i];
-            byte b3 = soundSamples2[i + 1];
+            byte b2 = v2[i];
+            byte b3 = v2[i + 1];
 
-            short a = (short) (b0 | (b1 << 8));
-            short b = (short) (b2 | (b3 << 8));
+            short a = (short) (((b1 & 0xFF) << 8) | (b0 & 0xFF));
+            short b = (short) (((b3 & 0xFF) << 8) | (b2 & 0xFF));
 
             short res = (short) (a + b);
-            soundSamples[i] = (byte) (res & 0xff);
-            soundSamples[i + 1] = (byte) ((res & 0xff00) >> 8);
+
+            v1[i] = (byte) (res & 0xff);
+            v1[i + 1] = (byte) ((res & 0xff00) >> 8);
         }
+        return v1;
+    }
+
+    private void playSound() {
+        int tones[] = {18000, 18200, 18400, 18600};
+
+        byte soundSamples[] = genTone(tones[0]);
+        for (int i = 1; i < tones.length; ++i)
+            soundSamples = addByteArrays(soundSamples, genTone(tones[i]));
+
         audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC,
-                sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+                44100, AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, soundSamples.length,
                 AudioTrack.MODE_STATIC);
         audioTrack.write(soundSamples, 0, soundSamples.length);
         audioTrack.setLoopPoints(0, soundSamples.length/4, -1);
+        audioTrack.setVolume(0.05f);
         audioTrack.play();
         Log.d("TAG", "Playing sound");
     }
 
     byte[] genTone(double freqOfTone){
-        int sampleRate = 44100;
+        double sampleR = 44100;
         int numSamples = sampleRate;
         double sample[] = new double[numSamples];
-        // fill out the array
+
         for (int i = 0; i < numSamples; ++i) {
-            sample[i] = Math.sin(2 * Math.PI * i / (sampleRate/freqOfTone));
+            sample[i] = Math.sin(2 * Math.PI * i / (sampleR/freqOfTone)); // (-1, 1)
         }
 
         byte soundSamples[] = new byte[2 * numSamples];
@@ -187,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         int idx = 0;
         for (final double dVal : sample) {
             // scale to maximum amplitude
-            final short val = (short) ((dVal * 100));
+            final short val = (short) ((dVal * 500));
             // in 16 bit wav PCM, first byte is the low order byte
             soundSamples[idx++] = (byte) (val & 0x00ff);
             soundSamples[idx++] = (byte) ((val & 0xff00) >>> 8);
