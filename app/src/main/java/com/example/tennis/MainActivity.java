@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.36");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.39");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void playSound() {
-        int tones[] = {18000, 18200, 18400, 18600};
+        int tones[] = {17600, 17800};
 
         byte soundSamples[] = genTone(tones[0]);
         for (int i = 1; i < tones.length; ++i)
@@ -177,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
                 AudioTrack.MODE_STATIC);
         audioTrack.write(soundSamples, 0, soundSamples.length);
         audioTrack.setLoopPoints(0, soundSamples.length/4, -1);
-        audioTrack.setVolume(0.05f);
+        //audioTrack.setVolume(0.15f);
         audioTrack.play();
         Log.d("TAG", "Playing sound");
     }
