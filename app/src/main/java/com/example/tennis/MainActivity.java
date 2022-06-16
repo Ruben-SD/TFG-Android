@@ -17,6 +17,7 @@ import android.os.Bundle;
 
 import android.os.Handler;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -40,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.39");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.34");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
@@ -50,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     AudioRecord recorder;
     private int sampleRate = 44100;
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-    private int audioFormat = AudioFormat.ENCODING_PCM_8BIT;
+    private int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
 
     AudioTrack audioTrack;
 
@@ -98,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         Handler handler = new Handler();
         Runnable runnable = new Runnable() {
             private long startTime = System.currentTimeMillis();
+            @RequiresApi(api = Build.VERSION_CODES.M)
             public void run() {
                 try {
                     int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
@@ -109,26 +111,32 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("VS", "Buffer created of size " + minBufSize);
                     DatagramPacket packet;
 
-                    recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
+                    recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize * 10);
 
                     Log.d("VS", "Recorder initialized");
 
                     recorder.startRecording();
 
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
-                    buffer[0] = sizeBytes[0];
-                    buffer[1] = sizeBytes[1];
-                    buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
+                    // 3584 / 2 = 1792
 
+                    int i = 0;
 
                     while(true) {
+                        byte[] sizeBytes = ByteBuffer.allocate(4).putInt(i).array();
+                        i = i + 1;
+                        buffer[0] = sizeBytes[0];
+                        buffer[1] = sizeBytes[1];
+                        buffer[2] = sizeBytes[2];
+                        buffer[3] = sizeBytes[3];
+
+
                         long start = System.currentTimeMillis();
                         //reading data from MIC into buffer
                         int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
                         //putting buffer in the packet
                         packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
                         socket.send(packet);
+
                         handler.post(new Runnable() {
                             public void run() {
                                 long now = System.currentTimeMillis() - start;
