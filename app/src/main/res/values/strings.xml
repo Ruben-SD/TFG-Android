@@ -3,4 +3,10 @@
     <string name="title_activity_chess_pattern">ChessPattern</string>
     <string name="dummy_button">Dummy Button</string>
     <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="dim_screen">Dim screen</string>
+    <string name="sending_data_to">Sending data to:</string>
+    <string name="default_ip">192.168.1.34</string>
+    <string name="ask_for_ip">Enter your PC IP Address:</string>
+    <string name="submit_ip">Submit IP</string>
+    <string name="reconnect">Reconnect</string>
 </resources>

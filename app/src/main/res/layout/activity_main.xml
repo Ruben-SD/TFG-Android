@@ -17,7 +17,7 @@
 
 
         <Button
-            android:id="@+id/showChessPatternButton"
+            android:id="@+id/dimScreen"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@+id/connectedToText"
@@ -27,7 +27,7 @@
             android:layout_marginLeft="150dp"
             android:layout_marginTop="46dp"
             android:layout_marginEnd="145dp"
-            android:text="Lights off"
+            android:text="@string/dim_screen"
             app:backgroundTint="#000000" />
 
         <TextView
@@ -41,7 +41,7 @@
             android:layout_marginLeft="100dp"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="118dp"
-            android:text="Sending data to: " />
+            android:text="@string/sending_data_to" />
 
         <EditText
             android:id="@+id/editTextIPAddress"
@@ -49,7 +49,7 @@
             android:layout_height="-50dp"
             android:layout_centerInParent="true"
             android:ems="10"
-            android:hint="192.168.1.2"
+            android:hint="@string/default_ip"
             android:inputType="textPersonName" />
 
         <TextView
@@ -59,9 +59,9 @@
             android:layout_above="@+id/editTextIPAddress"
             android:layout_alignParentTop="true"
             android:layout_marginLeft="100dp"
-            android:layout_marginTop="300dp"
-            android:layout_marginBottom="23dp"
-            android:text="Enter your PC IP Address:" />
+            android:layout_marginTop="119dp"
+            android:layout_marginBottom="204dp"
+            android:text="@string/ask_for_ip" />
 
         <Button
             android:id="@+id/submitIpButton"
@@ -69,7 +69,7 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="150dp"
             android:layout_marginTop="400dp"
-            android:text="Submit IP"
+            android:text="@string/submit_ip"
             app:backgroundTint="#000000" />
 
         <TextView
@@ -81,15 +81,16 @@
             android:id="@+id/reconnect"
             android:layout_width="130dp"
             android:layout_height="66dp"
-            android:layout_below="@+id/showChessPatternButton"
-            android:layout_alignBottom="@+id/showChessPatternButton"
+            android:layout_below="@+id/dimScreen"
+            android:layout_alignBottom="@+id/dimScreen"
             android:layout_alignParentStart="true"
             android:layout_alignParentEnd="true"
             android:layout_marginStart="145dp"
             android:layout_marginTop="19dp"
             android:layout_marginEnd="134dp"
             android:layout_marginBottom="-83dp"
-            android:text="Reconnect" />
+            android:text="@string/reconnect"
+            app:backgroundTint="#000000" />
 
     </RelativeLayout>
 

@@ -7,7 +7,6 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
@@ -20,7 +19,6 @@ import android.os.Build;
 import android.os.Bundle;
 
 import android.os.Handler;
-import android.os.PowerManager;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -29,12 +27,8 @@ import android.widget.TextView;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
@@ -77,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
         reconnectButton = (Button) findViewById(R.id.reconnect);
         connectedToText = (TextView) findViewById(R.id.connectedToText);
         fpsText = (TextView) findViewById(R.id.textViewFPS);
-        showChessPatternButton = (Button) findViewById(R.id.showChessPatternButton);
+        showChessPatternButton = (Button) findViewById(R.id.dimScreen);
         connectedToText.setText("Sending data to " + pcIp.toString());
         submitIPButton.setOnClickListener(v -> {
             try {
