@@ -3,15 +3,19 @@ package com.example.tennis;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -28,6 +32,7 @@ import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -41,10 +46,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView mTextViewRoll;
 
 
-
-    private InetAddress pcIp = InetAddress.getByName("192.168.137.1");
+    private InetAddress pcIp = InetAddress.getByName("192.168.1.34");
     EditText ipAddrInput;
-    Button submitIPButton, showChessPatternButton;
+    Button submitIPButton, showChessPatternButton, reconnectButton;
     TextView fpsText, connectedToText;
     long start;
     int fps;
@@ -70,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
         ipAddrInput = (EditText) findViewById(R.id.editTextIPAddress);
         submitIPButton = (Button) findViewById(R.id.submitIpButton);
+        reconnectButton = (Button) findViewById(R.id.reconnect);
         connectedToText = (TextView) findViewById(R.id.connectedToText);
         fpsText = (TextView) findViewById(R.id.textViewFPS);
         showChessPatternButton = (Button) findViewById(R.id.showChessPatternButton);
@@ -78,7 +83,9 @@ public class MainActivity extends AppCompatActivity {
             try {
                 pcIp = InetAddress.getByName(ipAddrInput.getText().toString());
                 connectedToText.setText("Sending data to " + pcIp.toString());
-            } catch (UnknownHostException e) {}
+                new ConnectTask().execute();
+            } catch (UnknownHostException e) {
+            }
         });
         Intent intent = new Intent(this, ChessPattern.class);
         showChessPatternButton.setOnClickListener(v -> {
@@ -88,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
             else layout.screenBrightness = 0F;
             getWindow().setAttributes(layout);
         });
-
+        reconnectButton.setOnClickListener(view -> new ConnectTask().execute());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
 
@@ -98,19 +105,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     public void startStreaming() {
         Handler handler = new Handler();
         Runnable runnable = new Runnable() {
             private long startTime = System.currentTimeMillis();
+
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void run() {
                 try {
-
-                    try {
-                        socket = new Socket(pcIp, 5555);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    while (true) {
+                        try {
+                            socket = new Socket(pcIp, 5555);
+                            break;
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                     int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
                     Log.d("VS", "Socket Created");
@@ -119,6 +128,13 @@ public class MainActivity extends AppCompatActivity {
 
                     Log.d("VS", "Buffer created of size " + minBufSize);
 
+                    if (ContextCompat.checkSelfPermission(getApplicationContext(),
+                            Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+
+                        ActivityCompat.requestPermissions((Activity) getBaseContext(),
+                                new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+
+                    }
                     recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
 
                     Log.d("VS", "Recorder initialized");
@@ -225,5 +241,21 @@ public class MainActivity extends AppCompatActivity {
             soundSamples[idx++] = (byte) ((val & 0xff00) >>> 8);
         }
         return soundSamples;
+    }
+
+    private class ConnectTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            while (true) {
+                try {
+                    socket = new Socket(pcIp, 5555);
+                    break;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
     }
 }
