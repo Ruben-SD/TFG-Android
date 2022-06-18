@@ -24,9 +24,11 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -38,14 +40,16 @@ public class MainActivity extends AppCompatActivity {
     private TextView mTextViewPitch;
     private TextView mTextViewRoll;
 
-    private DatagramSocket socket = new DatagramSocket();
 
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.39");
+
+    private InetAddress pcIp = InetAddress.getByName("192.168.137.1");
     EditText ipAddrInput;
     Button submitIPButton, showChessPatternButton;
     TextView fpsText, connectedToText;
     long start;
     int fps;
+
+    Socket socket;
 
     AudioRecord recorder;
     private int sampleRate = 44100;
@@ -55,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     AudioTrack audioTrack;
 
 
-    public MainActivity() throws SocketException, UnknownHostException {
+    public MainActivity() throws IOException {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -90,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
 
         playSound();
         startStreaming();
+
     }
 
 
@@ -98,16 +103,21 @@ public class MainActivity extends AppCompatActivity {
         Handler handler = new Handler();
         Runnable runnable = new Runnable() {
             private long startTime = System.currentTimeMillis();
+            @RequiresApi(api = Build.VERSION_CODES.M)
             public void run() {
                 try {
+
+                    try {
+                        socket = new Socket(pcIp, 5555);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                    DatagramSocket socket = new DatagramSocket();
                     Log.d("VS", "Socket Created");
                     Log.d("VS", String.valueOf(minBufSize));
                     byte[] buffer = new byte[minBufSize + 4];
 
                     Log.d("VS", "Buffer created of size " + minBufSize);
-                    DatagramPacket packet;
 
                     recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
 
@@ -115,20 +125,32 @@ public class MainActivity extends AppCompatActivity {
 
                     recorder.startRecording();
 
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+                    /*byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
                     buffer[0] = sizeBytes[0];
                     buffer[1] = sizeBytes[1];
                     buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
+                    buffer[3] = sizeBytes[3];*/
 
-
+                    int i = 0;
                     while(true) {
+                        byte[] sizeBytes = ByteBuffer.allocate(4).putInt(i++).array();
+                        buffer[0] = sizeBytes[0];
+                        buffer[1] = sizeBytes[1];
+                        buffer[2] = sizeBytes[2];
+                        buffer[3] = sizeBytes[3];
                         long start = System.currentTimeMillis();
                         //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4);
+                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4, AudioRecord.READ_BLOCKING);
+                        if (bytesRead != 1792) {
+                            System.exit(0);
+                        }
+                        Log.d("TAG_", String.valueOf(bytesRead));
                         //putting buffer in the packet
-                        packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
-                        socket.send(packet);
+                        OutputStream out = socket.getOutputStream();
+                        out.write(buffer);
+                        out.flush();
+                        //packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
+                        //socket.send(packet);
                         handler.post(new Runnable() {
                             public void run() {
                                 long now = System.currentTimeMillis() - start;
@@ -165,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void playSound() {
-        int tones[] = {17600, 17800};
+        int tones[] = {17600, 17800, 20000, 20200, 20400};
 
         byte soundSamples[] = genTone(tones[0]);
         for (int i = 1; i < tones.length; ++i)
@@ -177,7 +199,7 @@ public class MainActivity extends AppCompatActivity {
                 AudioTrack.MODE_STATIC);
         audioTrack.write(soundSamples, 0, soundSamples.length);
         audioTrack.setLoopPoints(0, soundSamples.length/4, -1);
-        //audioTrack.setVolume(0.15f);
+        audioTrack.setVolume(1.0f);
         audioTrack.play();
         Log.d("TAG", "Playing sound");
     }
