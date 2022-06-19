@@ -15,83 +15,83 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-
-        <Button
-            android:id="@+id/dimScreen"
-            android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/tv_fps"
+            android:textSize="17dp"
+            android:layout_width="87dp"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/connectedToText"
             android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
-            android:layout_marginStart="154dp"
-            android:layout_marginLeft="150dp"
-            android:layout_marginTop="46dp"
-            android:layout_marginEnd="145dp"
-            android:text="@string/dim_screen"
-            app:backgroundTint="#000000" />
+            android:layout_alignParentBottom="true"
+            android:layout_marginStart="22dp"
+            android:layout_marginTop="13dp"
+            android:layout_marginEnd="300dp"
+            android:layout_marginBottom="663dp" />
 
         <TextView
-            android:id="@+id/connectedToText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/submitIpButton"
+            android:id="@+id/tv_ip_addr_et_title"
+            android:layout_width="183dp"
+            android:layout_height="51dp"
             android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
-            android:layout_marginStart="131dp"
-            android:layout_marginLeft="100dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginEnd="118dp"
-            android:text="@string/sending_data_to" />
+            android:layout_marginStart="113dp"
+            android:layout_marginTop="164dp"
+            android:layout_marginEnd="113dp"
+            android:text="@string/ip_addr_et_title"
+            android:textSize="14dp" />
 
         <EditText
-            android:id="@+id/editTextIPAddress"
+            android:id="@+id/et_ip_address"
             android:layout_width="wrap_content"
-            android:layout_height="-50dp"
-            android:layout_centerInParent="true"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/tv_ip_addr_et_title"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="-22dp"
+            android:layout_marginStart="113dp"
+            android:layout_marginEnd="113dp"
             android:ems="10"
-            android:hint="@string/default_ip"
-            android:inputType="textPersonName" />
+            android:inputType="textAutoComplete"
+            android:text="@string/default_ip" />
 
         <TextView
-            android:id="@+id/textView"
+            android:id="@+id/tv_connected_to_ip_addr"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_above="@+id/editTextIPAddress"
-            android:layout_alignParentTop="true"
-            android:layout_marginLeft="100dp"
-            android:layout_marginTop="119dp"
-            android:layout_marginBottom="204dp"
-            android:text="@string/ask_for_ip" />
-
-        <Button
-            android:id="@+id/submitIpButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="150dp"
-            android:layout_marginTop="400dp"
-            android:text="@string/submit_ip"
-            app:backgroundTint="#000000" />
-
-        <TextView
-            android:id="@+id/textViewFPS"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <Button
-            android:id="@+id/reconnect"
-            android:layout_width="130dp"
-            android:layout_height="66dp"
-            android:layout_below="@+id/dimScreen"
-            android:layout_alignBottom="@+id/dimScreen"
+            android:layout_height="37dp"
+            android:layout_below="@+id/et_ip_address"
             android:layout_alignParentStart="true"
             android:layout_alignParentEnd="true"
-            android:layout_marginStart="145dp"
-            android:layout_marginTop="19dp"
-            android:layout_marginEnd="134dp"
-            android:layout_marginBottom="-83dp"
-            android:text="@string/reconnect"
-            app:backgroundTint="#000000" />
+            android:layout_marginStart="113dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="113dp"
+            android:textSize="14dp" />
 
+        <Button
+            android:id="@+id/but_connect"
+            android:layout_width="139dp"
+            android:layout_height="67dp"
+            android:layout_below="@+id/et_ip_address"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="113dp"
+            android:layout_marginTop="60dp"
+            android:layout_marginEnd="113dp"
+            android:backgroundTint="#000000"
+            android:text="@string/connect" />
+
+        <Button
+            android:id="@+id/but_dim_screen"
+            android:layout_width="wrap_content"
+            android:layout_height="67dp"
+            android:layout_below="@+id/but_connect"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="113dp"
+            android:layout_marginTop="48dp"
+            android:layout_marginEnd="113dp"
+            android:backgroundTint="#000000"
+            android:text="@string/dim_screen" />
     </RelativeLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -9,6 +9,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -35,17 +36,12 @@ import java.nio.ByteBuffer;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView mTextViewAzimuth;
-    private TextView mTextViewPitch;
-    private TextView mTextViewRoll;
+    String TAG = "TAG_";
 
-
-    private InetAddress pcIp = InetAddress.getByName("192.168.1.34");
+    InetAddress pcIp;
     EditText ipAddrInput;
-    Button submitIPButton, showChessPatternButton, reconnectButton;
+    Button connectButton, dimScreenButton;
     TextView fpsText, connectedToText;
-    long start;
-    int fps;
 
     Socket socket;
 
@@ -57,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     AudioTrack audioTrack;
 
 
-    public MainActivity() throws IOException {
+    public MainActivity() throws UnknownHostException {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -66,36 +62,34 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ipAddrInput = (EditText) findViewById(R.id.editTextIPAddress);
-        submitIPButton = (Button) findViewById(R.id.submitIpButton);
-        reconnectButton = (Button) findViewById(R.id.reconnect);
-        connectedToText = (TextView) findViewById(R.id.connectedToText);
-        fpsText = (TextView) findViewById(R.id.textViewFPS);
-        showChessPatternButton = (Button) findViewById(R.id.dimScreen);
-        connectedToText.setText("Sending data to " + pcIp.toString());
-        submitIPButton.setOnClickListener(v -> {
+        ipAddrInput = findViewById(R.id.et_ip_address);
+        connectButton = findViewById(R.id.but_connect);
+        connectedToText = findViewById(R.id.tv_connected_to_ip_addr);
+        fpsText = findViewById(R.id.tv_fps);
+        dimScreenButton = findViewById(R.id.but_dim_screen);
+
+        connectButton.setOnClickListener(v -> {
             try {
                 pcIp = InetAddress.getByName(ipAddrInput.getText().toString());
-                connectedToText.setText("Sending data to " + pcIp.toString());
+                connectedToText.setText(getString(R.string.connected_to) + " " + pcIp);
                 new ConnectTask().execute();
             } catch (UnknownHostException e) {
             }
         });
-        Intent intent = new Intent(this, ChessPattern.class);
-        showChessPatternButton.setOnClickListener(v -> {
+
+        dimScreenButton.setOnClickListener(v -> {
             WindowManager.LayoutParams layout = getWindow().getAttributes();
             if (layout.screenBrightness == 0F)
                 layout.screenBrightness = -1;
             else layout.screenBrightness = 0F;
             getWindow().setAttributes(layout);
         });
-        reconnectButton.setOnClickListener(view -> new ConnectTask().execute());
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.INTERNET}, 1);
 
         playSound();
         startStreaming();
-
     }
 
 
@@ -110,28 +104,28 @@ public class MainActivity extends AppCompatActivity {
                     while (true) {
                         try {
                             socket = new Socket(pcIp, 5555);
+                            Log.d(TAG, "Socket Created");
                             break;
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                     }
+
                     int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-                    Log.d("VS", "Socket Created");
-                    Log.d("VS", String.valueOf(minBufSize));
+
+                    Log.d(TAG, String.valueOf(minBufSize));
                     byte[] buffer = new byte[minBufSize + 4];
 
-                    Log.d("VS", "Buffer created of size " + minBufSize);
+                    Log.d(TAG, "Buffer created of size " + minBufSize);
 
                     if (ContextCompat.checkSelfPermission(getApplicationContext(),
                             Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-
                         ActivityCompat.requestPermissions((Activity) getBaseContext(),
                                 new String[]{Manifest.permission.RECORD_AUDIO}, 0);
-
                     }
                     recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
 
-                    Log.d("VS", "Recorder initialized");
+                    Log.d(TAG, "Recorder initialized");
 
                     recorder.startRecording();
 
@@ -154,23 +148,21 @@ public class MainActivity extends AppCompatActivity {
                         if (bytesRead != 1792) {
                             System.exit(0);
                         }
-                        Log.d("TAG_", String.valueOf(bytesRead));
+
                         //putting buffer in the packet
                         OutputStream out = socket.getOutputStream();
                         out.write(buffer);
                         out.flush();
-                        //packet = new DatagramPacket(buffer, buffer.length, pcIp,5555);
-                        //socket.send(packet);
-                        handler.post(new Runnable() {
-                            public void run() {
-                                long now = System.currentTimeMillis() - start;
-                                fpsText.setText("FPS: " + String.valueOf(1000/now));
-                        }});
+
+                        handler.post(() -> {
+                            long now = System.currentTimeMillis() - start;
+                            fpsText.setText("FPS: " + 1000 / now);
+                    });
                     }
                 } catch(UnknownHostException e) {
-                    Log.e("VS", "UnknownHostException");
+                    Log.e(TAG, "UnknownHostException");
                 } catch (IOException e) {
-                    Log.e("VS", "IOException");
+                    Log.e(TAG, "IOException");
                 }
             }
         };
@@ -211,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
         audioTrack.setLoopPoints(0, soundSamples.length/4, -1);
         audioTrack.setVolume(1.0f);
         audioTrack.play();
-        Log.d("TAG", "Playing sound");
+        Log.d(TAG, "Playing sound");
     }
 
     byte[] genTone(double freqOfTone){
@@ -225,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
 
         byte soundSamples[] = new byte[2 * numSamples];
         // convert to 16 bit pcm sound array
-        // assumes the sample buffer is normalised.
+        // assumes the sample buffer is normalized.
         int idx = 0;
         for (final double dVal : sample) {
             // scale to maximum amplitude
