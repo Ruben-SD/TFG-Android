@@ -117,66 +117,64 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     public void startStreaming() {
         Handler handler = new Handler();
-        Runnable runnable = new Runnable() {
-            private long startTime = System.currentTimeMillis();
+        Runnable runnable = () -> {
+            int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
 
-            @RequiresApi(api = Build.VERSION_CODES.M)
-            public void run() {
-                int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+            Log.d(TAG, String.valueOf(minBufSize));
+            byte[] buffer = new byte[minBufSize + 4];
 
-                Log.d(TAG, String.valueOf(minBufSize));
-                byte[] buffer = new byte[minBufSize + 4];
+            Log.d(TAG, "Buffer created of size " + minBufSize);
 
-                Log.d(TAG, "Buffer created of size " + minBufSize);
+            if (ContextCompat.checkSelfPermission(getApplicationContext(),
+                    Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions((Activity) getBaseContext(),
+                        new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+            }
+            recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
 
-                if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                        Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions((Activity) getBaseContext(),
-                            new String[]{Manifest.permission.RECORD_AUDIO}, 0);
-                }
-                recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
+            Log.d(TAG, "Recorder initialized");
 
-                Log.d(TAG, "Recorder initialized");
+            recorder.startRecording();
 
-                recorder.startRecording();
+            /*
+            byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+            buffer[0] = sizeBytes[0];
+            buffer[1] = sizeBytes[1];
+            buffer[2] = sizeBytes[2];
+            buffer[3] = sizeBytes[3];
+            */
 
-                /*byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+            int i = 0;
+            while (true) {
+                byte[] sizeBytes = ByteBuffer.allocate(4).putInt(i++).array();
                 buffer[0] = sizeBytes[0];
                 buffer[1] = sizeBytes[1];
                 buffer[2] = sizeBytes[2];
-                buffer[3] = sizeBytes[3];*/
-
-                int i = 0;
-                while(true) {
-                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(i++).array();
-                    buffer[0] = sizeBytes[0];
-                    buffer[1] = sizeBytes[1];
-                    buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];
-                    long start = System.currentTimeMillis();
-                    //reading data from MIC into buffer
-                    int bytesRead = recorder.read(buffer, 4, buffer.length - 4, AudioRecord.READ_BLOCKING);
-                    if (bytesRead != 1792) {
-                        System.exit(0);
-                    }
-
-                    //putting buffer in the packet
-                    OutputStream out;
-                    try {
-                        out = socket.getOutputStream();
-                        out.write(buffer);
-                        out.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    handler.post(() -> {
-                        long now = System.currentTimeMillis() - start;
-                        fpsText.setText("FPS: " + 1000 / now);
-                    });
+                buffer[3] = sizeBytes[3];
+                long start = System.currentTimeMillis();
+                // Reading data from MIC into buffer
+                int bytesRead = recorder.read(buffer, 4, buffer.length - 4, AudioRecord.READ_BLOCKING);
+                if (bytesRead != 1792) {
+                    System.exit(0);
                 }
+
+                // Send buffer over TCP
+                OutputStream out;
+                try {
+                    out = socket.getOutputStream();
+                    out.write(buffer);
+                    out.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                handler.post(() -> {
+                    long now = System.currentTimeMillis() - start;
+                    fpsText.setText(getString(R.string.fps) + 1000 / now);
+                });
             }
         };
         new Thread(runnable).start();
@@ -229,13 +227,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         byte soundSamples[] = new byte[2 * numSamples];
-        // convert to 16 bit pcm sound array
-        // assumes the sample buffer is normalized.
+        // Convert to 16 bit pcm sound array
+        // Assumes the sample buffer is normalized.
         int idx = 0;
         for (final double dVal : sample) {
-            // scale to maximum amplitude
+            // Scale to maximum amplitude
             final short val = (short) ((dVal * 500));
-            // in 16 bit wav PCM, first byte is the low order byte
+            // In 16 bit wav PCM, first byte is the low order byte
             soundSamples[idx++] = (byte) (val & 0x00ff);
             soundSamples[idx++] = (byte) ((val & 0xff00) >>> 8);
         }
