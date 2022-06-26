@@ -7,9 +7,11 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -20,21 +22,26 @@ import android.os.Build;
 import android.os.Bundle;
 
 import android.os.Handler;
+import android.os.StrictMode;
 import android.util.Log;
+import android.util.Patterns;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     String TAG = "TAG_";
 
@@ -42,6 +49,12 @@ public class MainActivity extends AppCompatActivity {
     EditText ipAddrInput;
     Button connectButton, dimScreenButton;
     TextView fpsText, connectedToText;
+
+    private SensorManager mSensorManager;
+    private Sensor mRotationVectorSensor;
+    private Sensor sixDOFSensor;
+    private DatagramSocket udpSocket;
+
 
     Socket socket;
 
@@ -53,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     AudioTrack audioTrack;
 
 
-    public MainActivity() throws UnknownHostException {
+    public MainActivity() {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -69,11 +82,17 @@ public class MainActivity extends AppCompatActivity {
         dimScreenButton = findViewById(R.id.but_dim_screen);
 
         connectButton.setOnClickListener(v -> {
-            try {
-                pcIp = InetAddress.getByName(ipAddrInput.getText().toString());
+            String ip = ipAddrInput.getText().toString();
+            if (Patterns.IP_ADDRESS.matcher(ip).matches()) {
+                try {
+                    pcIp = InetAddress.getByName(ip);
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                }
                 connectedToText.setText(getString(R.string.connected_to) + " " + pcIp);
                 new ConnectTask().execute();
-            } catch (UnknownHostException e) {
+            } else {
+                Toast.makeText(this, "Not a valid IP address", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -90,6 +109,11 @@ public class MainActivity extends AppCompatActivity {
 
         playSound();
         startStreaming();
+
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mRotationVectorSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
+        sixDOFSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
     }
 
 
@@ -100,69 +124,58 @@ public class MainActivity extends AppCompatActivity {
 
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void run() {
-                try {
-                    while (true) {
-                        try {
-                            socket = new Socket(pcIp, 5555);
-                            Log.d(TAG, "Socket Created");
-                            break;
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
+                int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
 
-                    int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
+                Log.d(TAG, String.valueOf(minBufSize));
+                byte[] buffer = new byte[minBufSize + 4];
 
-                    Log.d(TAG, String.valueOf(minBufSize));
-                    byte[] buffer = new byte[minBufSize + 4];
+                Log.d(TAG, "Buffer created of size " + minBufSize);
 
-                    Log.d(TAG, "Buffer created of size " + minBufSize);
+                if (ContextCompat.checkSelfPermission(getApplicationContext(),
+                        Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions((Activity) getBaseContext(),
+                            new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+                }
+                recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
 
-                    if (ContextCompat.checkSelfPermission(getApplicationContext(),
-                            Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions((Activity) getBaseContext(),
-                                new String[]{Manifest.permission.RECORD_AUDIO}, 0);
-                    }
-                    recorder = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, sampleRate, channelConfig, audioFormat, minBufSize);
+                Log.d(TAG, "Recorder initialized");
 
-                    Log.d(TAG, "Recorder initialized");
+                recorder.startRecording();
 
-                    recorder.startRecording();
+                /*byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+                buffer[0] = sizeBytes[0];
+                buffer[1] = sizeBytes[1];
+                buffer[2] = sizeBytes[2];
+                buffer[3] = sizeBytes[3];*/
 
-                    /*byte[] sizeBytes = ByteBuffer.allocate(4).putInt(minBufSize + 4).array();
+                int i = 0;
+                while(true) {
+                    byte[] sizeBytes = ByteBuffer.allocate(4).putInt(i++).array();
                     buffer[0] = sizeBytes[0];
                     buffer[1] = sizeBytes[1];
                     buffer[2] = sizeBytes[2];
-                    buffer[3] = sizeBytes[3];*/
+                    buffer[3] = sizeBytes[3];
+                    long start = System.currentTimeMillis();
+                    //reading data from MIC into buffer
+                    int bytesRead = recorder.read(buffer, 4, buffer.length - 4, AudioRecord.READ_BLOCKING);
+                    if (bytesRead != 1792) {
+                        System.exit(0);
+                    }
 
-                    int i = 0;
-                    while(true) {
-                        byte[] sizeBytes = ByteBuffer.allocate(4).putInt(i++).array();
-                        buffer[0] = sizeBytes[0];
-                        buffer[1] = sizeBytes[1];
-                        buffer[2] = sizeBytes[2];
-                        buffer[3] = sizeBytes[3];
-                        long start = System.currentTimeMillis();
-                        //reading data from MIC into buffer
-                        int bytesRead = recorder.read(buffer, 4, buffer.length - 4, AudioRecord.READ_BLOCKING);
-                        if (bytesRead != 1792) {
-                            System.exit(0);
-                        }
-
-                        //putting buffer in the packet
-                        OutputStream out = socket.getOutputStream();
+                    //putting buffer in the packet
+                    OutputStream out;
+                    try {
+                        out = socket.getOutputStream();
                         out.write(buffer);
                         out.flush();
-
-                        handler.post(() -> {
-                            long now = System.currentTimeMillis() - start;
-                            fpsText.setText("FPS: " + 1000 / now);
-                    });
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                } catch(UnknownHostException e) {
-                    Log.e(TAG, "UnknownHostException");
-                } catch (IOException e) {
-                    Log.e(TAG, "IOException");
+
+                    handler.post(() -> {
+                        long now = System.currentTimeMillis() - start;
+                        fpsText.setText("FPS: " + 1000 / now);
+                    });
                 }
             }
         };
@@ -236,6 +249,7 @@ public class MainActivity extends AppCompatActivity {
             while (true) {
                 try {
                     socket = new Socket(pcIp, 5555);
+                    udpSocket = new DatagramSocket();
                     break;
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -243,5 +257,57 @@ public class MainActivity extends AppCompatActivity {
             }
             return null;
         }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        Sensor sensor = event.sensor;
+        if (sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+            float tx = event.values[0];
+            float ty = event.values[1];
+            float tz = event.values[2];
+            String sendString = "1 " + tx + " " + ty + " " + tz;
+
+                StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+                StrictMode.setThreadPolicy(policy);
+
+                DatagramPacket packet = new DatagramPacket(sendString.getBytes(), sendString.getBytes().length, pcIp, 5557);
+                try {
+                    if (udpSocket != null) udpSocket.send(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+        } else {
+            StringBuilder strCoords = new StringBuilder("0");
+            for (int i = 0; i < event.values.length; ++i)
+                strCoords.append(" " + event.values[i]);
+
+            String sendString = strCoords.toString();
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+
+            DatagramPacket packet = new DatagramPacket(sendString.getBytes(), sendString.getBytes().length, pcIp, 5557);
+            try {
+                if (udpSocket != null) udpSocket.send(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mSensorManager.registerListener(this, sixDOFSensor, 0);
+        mSensorManager.registerListener(this, mRotationVectorSensor, 0);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mSensorManager.unregisterListener(this);
     }
 }
