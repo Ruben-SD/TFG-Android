@@ -161,14 +161,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     System.exit(0);
                 }
 
-                // Send buffer over TCP
-                OutputStream out;
-                try {
-                    out = socket.getOutputStream();
-                    out.write(buffer);
-                    out.flush();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (socket != null) {
+                    // Send buffer over TCP
+                    OutputStream out;
+                    try {
+                        out = socket.getOutputStream();
+                        out.write(buffer);
+                        out.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
 
                 handler.post(() -> {
